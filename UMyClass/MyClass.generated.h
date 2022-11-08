@@ -4,7 +4,6 @@
 #include "UObject/NoExportTypes.h"
 #include "MyClass.generated.h"
 
-UCLASS()
 class HELLO_API UMyClass : public UObject
 {
 #define FID_Hello_Source_Hello_MyClass_h_15_INCLASS_NO_PURE_DECLS \
@@ -29,6 +28,7 @@ public: \
     /** 在运行时返回表示此类的 UClass 对象 */ \
     inline static UClass* StaticClass() \
     { \
+        /** 这个函数的实现在MyClass.gen.cpp里 */ \
         return GetPrivateStaticClass(); \
     } \
     /** Returns the package this class belongs in */ \
