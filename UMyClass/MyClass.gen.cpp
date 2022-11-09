@@ -24,12 +24,14 @@ void EmptyLinkFunctionForGeneratedCodeMyClass() {}
         { \
             /* this could be handled with templates, but we want it external to avoid code bloat */ \
             GetPrivateStaticClassBody( \
+                //Package名字
                 StaticPackage(), \
-                (TCHAR*)TEXT(#UMyClass) + 1 + ((StaticClassFlags & CLASS_Deprecated) ? 11 : 0), \
+                //类名，+1去掉U、A、F前缀，如果接口过时，需要+11，去掉_Deprecated前缀
+                (TCHAR*)TEXT("UMyClass") + 1 + ((StaticClassFlags & CLASS_Deprecated) ? 11 : 0), \
                 Z_Registration_Info_UClass_UMyClass.InnerSingleton, \
-                StaticRegisterNatives##UMyClass, \
+                StaticRegisterNativesUMyClass, \
                 sizeof(UMyClass), \
-                alignof(UMyClass), \
+                alignof(UMyClass), \  //内存对齐
                 (EClassFlags)UMyClass::StaticClassFlags, \
                 UMyClass::StaticClassCastFlags(), \
                 UMyClass::StaticConfigName(), \
@@ -117,7 +119,7 @@ void EmptyLinkFunctionForGeneratedCodeMyClass() {}
     }
     //HotReload相关，先忽略
     UMyClass::UMyClass(FVTableHelper& Helper) : Super(Helper) {};
-    //该类的注册编译信息
+    //该UClass的注册编译信息
     struct Z_CompiledInDeferFile_FID_Hello_Source_Hello_MyClass_h_Statics
     {
         static const FClassRegisterCompiledInInfo ClassInfo[];
@@ -125,7 +127,7 @@ void EmptyLinkFunctionForGeneratedCodeMyClass() {}
     //上面注册编译信息的类内声明，类外实现
     const FClassRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Hello_Source_Hello_MyClass_h_Statics::ClassInfo[] = {
         { 
-            Z_Construct_UClass_UMyClass, 
+            Z_Construct_UClass_UMyClass, //外部
             UMyClass::StaticClass, 
             TEXT("UMyClass"), 
             &Z_Registration_Info_UClass_UMyClass, 
@@ -137,8 +139,13 @@ void EmptyLinkFunctionForGeneratedCodeMyClass() {}
         },
     };
     //用于执行对象信息注册的帮助进程类。 它盲目地转发对 RegisterCompiledInInfo 的调用
-    static FRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Hello_Source_Hello_MyClass_h_2139993100(TEXT("/Script/Hello"),
-        Z_CompiledInDeferFile_FID_Hello_Source_Hello_MyClass_h_Statics::ClassInfo, UE_ARRAY_COUNT(Z_CompiledInDeferFile_FID_Hello_Source_Hello_MyClass_h_Statics::ClassInfo),
-        nullptr, 0,
-        nullptr, 0);
+    static FRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Hello_Source_Hello_MyClass_h_2139993100(
+        TEXT("/Script/Hello"),
+        Z_CompiledInDeferFile_FID_Hello_Source_Hello_MyClass_h_Statics::ClassInfo, 
+        UE_ARRAY_COUNT(Z_CompiledInDeferFile_FID_Hello_Source_Hello_MyClass_h_Statics::ClassInfo),
+        nullptr, 
+        0,
+        nullptr, 
+        0
+    );
 PRAGMA_ENABLE_DEPRECATION_WARNINGS  //启用弃用警告
