@@ -108,7 +108,7 @@ void EmptyLinkFunctionForGeneratedCodeMyClass() {}
     {
         if (!Z_Registration_Info_UClass_UMyClass.OuterSingleton)
         {
-            //这里的代码已经移到了UObjectGlobals.cpp里的5052行，利用前面构造的参数列表进行构造注册
+            //这里的代码已经移到了UObjectGlobals.cpp里的5052行，利用前面构造的参数列表进行构造注册UClass
             UECodeGen_Private::ConstructUClass(Z_Registration_Info_UClass_UMyClass.OuterSingleton, Z_Construct_UClass_UMyClass_Statics::ClassParams);
         }
         return Z_Registration_Info_UClass_UMyClass.OuterSingleton;
@@ -149,3 +149,87 @@ void EmptyLinkFunctionForGeneratedCodeMyClass() {}
         0
     );
 PRAGMA_ENABLE_DEPRECATION_WARNINGS  //启用弃用警告
+
+//UECodeGen_Private空间下的ConstructUClass()函数
+    void ConstructUClass(UClass*& OutClass, const FClassParams& Params)
+    {
+        //防止重复注册
+        if (OutClass && (OutClass->ClassFlags & CLASS_Constructed))
+        {
+            return;
+        }
+        //遍历该UClss依赖的对象的构造函数，并执行这些函数
+        for (UObject* (*const *SingletonFunc)() = Params.DependencySingletonFuncArray, *(*const *SingletonFuncEnd)() = SingletonFunc + Params.NumDependencySingletons; SingletonFunc != SingletonFuncEnd; ++SingletonFunc)
+        {
+            (*SingletonFunc)();
+        }
+        //类内没有注册的函数
+        UClass* NewClass = Params.ClassNoRegisterFunc();
+        OutClass = NewClass;
+        //如果自身没有构造函数，直接return
+        if (NewClass->ClassFlags & CLASS_Constructed)
+        {
+            return;
+        }
+
+        UObjectForceRegistration(NewClass);  //提取信息注册自身，强制注册
+
+        UClass* SuperClass = NewClass->GetSuperClass();
+        if (SuperClass)
+        {
+            NewClass->ClassFlags |= (SuperClass->ClassFlags & CLASS_Inherit);
+        }
+
+        NewClass->ClassFlags |= (EClassFlags)(Params.ClassFlags | CLASS_Constructed);
+        // Make sure the reference token stream is empty since it will be reconstructed later on
+        // This should not apply to intrinsic classes since they emit native references before AssembleReferenceTokenStream is called.
+        // 确保引用标识流为空，因为它将在稍后重建
+        // 这不应该适用于内部类，因为它们在调用 AssembleReferenceTokenStream 之前原生引用会被调用。
+        // AssembleReferenceTokenStream 重定向引用标识流
+        if ((NewClass->ClassFlags & CLASS_Intrinsic) != CLASS_Intrinsic)
+        {
+            check((NewClass->ClassFlags & CLASS_TokenStreamAssembled) != CLASS_TokenStreamAssembled);
+            NewClass->ReferenceTokenStream.Empty();  //清空引用标识流
+        }
+        // 遍历函数数组，使用Functions->CreateFuncPtr()创建出UFunction对象并串成链表
+        // 这个链表维护在UClass的Children字段
+        // 调用AddFunctionToFunctionMap函数，将UFunction对象和函数名字添加到UClass里的FuncMap映射
+        NewClass->CreateLinkAndAddChildFunctionsToMap(Params.FunctionLinkArray, Params.NumFunctions);
+        // 构造成员属性，里面用一个400行的switch-case来判断类型
+        ConstructFProperties(NewClass, Params.PropertyArray, Params.NumProperties);
+        // UClass对象的配置名称，是一个FName
+        if (Params.ClassConfigNameUTF8)
+        {
+            NewClass->ClassConfigName = FName(UTF8_TO_TCHAR(Params.ClassConfigNameUTF8));
+        }
+
+        // 设置原生的C++类的类型信息
+        // CppClassInfo是FCppClassTypeInfoStatic类型，结构体里只有一个成员变量，用于设定这个类是不是抽象类
+        NewClass->SetCppTypeInfoStatic(Params.CppClassInfo);
+
+        // 接口相关
+        if (int32 NumImplementedInterfaces = Params.NumImplementedInterfaces)
+        {
+            // 为接口重新分配空间
+            NewClass->Interfaces.Reserve(NumImplementedInterfaces);
+            // 第一个参数段初始化访问的元素，并且计算尾部元素；后面正常迭代
+            for (const FImplementedInterfaceParams* ImplementedInterface = Params.ImplementedInterfaceArray, *ImplementedInterfaceEnd = ImplementedInterface + NumImplementedInterfaces; ImplementedInterface != ImplementedInterfaceEnd; ++ImplementedInterface)
+            {
+                // 转成函数指针
+                UClass* (*ClassFunc)() = ImplementedInterface->ClassFunc;
+                // 判断函数指针是否为空，不为空就调用函数
+                UClass* InterfaceClass = ClassFunc ? ClassFunc() : nullptr;
+                // 在UClass里插入接口信息，并且初始化接口信息，这些信息包括偏移和是否可以蓝图调用
+                NewClass->Interfaces.Emplace(InterfaceClass, ImplementedInterface->Offset, ImplementedInterface->bImplementedByK2);
+            }
+        }
+
+#if WITH_METADATA
+        // 为UClass添加元数据，主要用于蓝图里显示
+        AddMetaData(NewClass, Params.MetaDataArray, Params.NumMetaData);
+#endif
+        // “静态”链接，后续解释
+        NewClass->StaticLink();
+        // 这里主要是添加子父的UClass对象的关系
+        NewClass->SetSparseClassDataStruct(NewClass->GetSparseClassDataArchetypeStruct());
+    }
