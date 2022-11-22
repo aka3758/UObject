@@ -20,6 +20,8 @@ void EmptyLinkFunctionForGeneratedCodeMyClass() {}
     FClassRegistrationInfo Z_Registration_Info_UClass_UMyClass; \
     UClass* UMyClass::GetPrivateStaticClass() \
     { \
+        //大钊文章里所谓的第一个收集入口，主要收集一些自身的内部信息，比如内存对齐，大小，所在的包名，类名等
+        //Inner这里理解为内部适合一些，与Outer外部相对
         if (!Z_Registration_Info_UClass_UMyClass.InnerSingleton) \
         { \
             /* this could be handled with templates, but we want it external to avoid code bloat */ \
@@ -68,9 +70,9 @@ void EmptyLinkFunctionForGeneratedCodeMyClass() {}
     //静态成员，类内声明，类外实现
     //依赖的单例对象
     UObject* (*const Z_Construct_UClass_UMyClass_Statics::DependentSingletons[])() = {
-        //UClass对象的构造器
+        //获得UMyClass的UClass
         (UObject* (*)())Z_Construct_UClass_UObject,
-        //UPackage构造器
+        //获得UMyClass所在UPackage
         (UObject* (*)())Z_Construct_UPackage__Script_Hello,
     };
 #if WITH_METADATA  //编辑器模式下开启
@@ -87,7 +89,7 @@ void EmptyLinkFunctionForGeneratedCodeMyClass() {}
     };
     //构造UClass对象的参数
     const UECodeGen_Private::FClassParams Z_Construct_UClass_UMyClass_Statics::ClassParams = {
-        &UMyClass::StaticClass,     //没有注册的UClass对象的StaticClass函数指针
+        &UMyClass::StaticClass,     //可以获取到UMyClass对象的函数
         nullptr,    //UClass配置名称，UTF8字符串
         &StaticCppClassTypeInfo,    //C++类信息，是否是抽象类
         DependentSingletons,    //依赖的单例的函数数组，实际上是UClass对象构造器和UPackage对象构造器
@@ -127,26 +129,26 @@ void EmptyLinkFunctionForGeneratedCodeMyClass() {}
     //上面注册编译信息的类内声明，类外实现
     const FClassRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Hello_Source_Hello_MyClass_h_Statics::ClassInfo[] = {
         { 
-            Z_Construct_UClass_UMyClass, //外部
-            UMyClass::StaticClass, 
-            TEXT("UMyClass"), 
-            &Z_Registration_Info_UClass_UMyClass, 
-            CONSTRUCT_RELOAD_VERSION_INFO(
+            Z_Construct_UClass_UMyClass, //归属的UClass类
+            UMyClass::StaticClass,  //自身的UClass
+            TEXT("UMyClass"),   //名称
+            &Z_Registration_Info_UClass_UMyClass,   //注册信息
+            CONSTRUCT_RELOAD_VERSION_INFO(  //重加载的版本信息
                 FClassReloadVersionInfo, 
                 sizeof(UMyClass), 
                 585199990U
             ) 
         },
     };
-    //用于执行对象信息注册的帮助进程类。 它盲目地转发对 RegisterCompiledInInfo 的调用
+    //用于执行对象信息注册的帮助进程类。 它盲目地转发对 RegisterCompiledInInfo 的调用，这里就是注册调用的接口
     static FRegisterCompiledInInfo Z_CompiledInDeferFile_FID_Hello_Source_Hello_MyClass_h_2139993100(
-        TEXT("/Script/Hello"),
-        Z_CompiledInDeferFile_FID_Hello_Source_Hello_MyClass_h_Statics::ClassInfo, 
-        UE_ARRAY_COUNT(Z_CompiledInDeferFile_FID_Hello_Source_Hello_MyClass_h_Statics::ClassInfo),
-        nullptr, 
-        0,
-        nullptr, 
-        0
+        TEXT("/Script/Hello"),  //Package名
+        Z_CompiledInDeferFile_FID_Hello_Source_Hello_MyClass_h_Statics::ClassInfo, //类信息
+        UE_ARRAY_COUNT(Z_CompiledInDeferFile_FID_Hello_Source_Hello_MyClass_h_Statics::ClassInfo),  //类信息数目
+        nullptr, //结构体信息
+        0,  //结构体信息数目
+        nullptr, //枚举信息
+        0   //枚举信息数目
     );
 PRAGMA_ENABLE_DEPRECATION_WARNINGS  //启用弃用警告
 
@@ -163,7 +165,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS  //启用弃用警告
         {
             (*SingletonFunc)();
         }
-        //类内没有注册的函数
+        //UClass内没有注册的对象，这里就是UMyClass
         UClass* NewClass = Params.ClassNoRegisterFunc();
         OutClass = NewClass;
         //如果自身没有构造函数，直接return
@@ -172,7 +174,7 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS  //启用弃用警告
             return;
         }
 
-        UObjectForceRegistration(NewClass);  //提取信息注册自身，强制注册
+        UObjectForceRegistration(NewClass);  //提取信息注册自身，这里就是UMyClass，强制注册
 
         UClass* SuperClass = NewClass->GetSuperClass();
         if (SuperClass)

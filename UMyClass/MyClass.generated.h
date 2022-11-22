@@ -91,6 +91,6 @@ public: \
         return new (EC_InternalUseOnlyConstructor, (UObject*)GetTransientPackage(), NAME_None, RF_NeedLoad | RF_ClassDefaultObject | RF_TagGarbageTemp) UMyClass(Helper); \
     }
 
-    /** 声明定义了一个构造函数包装器 */
+    /** 声明定义了一个构造函数包装器，new(ptr*)SomeClass，C++11新特性，在指定位置new一个对象 */
     static void __DefaultConstructor(const FObjectInitializer& X) { new((EInternal*)X.GetObj())UMyClass(X); }
 };
